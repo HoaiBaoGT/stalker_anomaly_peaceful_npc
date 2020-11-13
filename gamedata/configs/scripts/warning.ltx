@@ -1,0 +1,19 @@
+[logic]
+suitable	= true
+prior		= 140
+active		= remark@suspect
+
+[remark@suspect]
+anim		= raid
+on_info1	= %=script(xr_warn:reset_scheme_all_member)%
+on_info2	= {=see_actor} remark@warning
+
+[remark@warning]
+target		= story | actor
+anim		= {=actor_has_weapon =script(xr_warn:check_distance:warn)} threat_na, raid
+on_info1	= %=script(xr_warn:reset_scheme_all_member)%
+on_info2	= {!see_actor} remark@suspect 
+on_info3	= {=script(xr_warn:check_distance:fire)} %=script(xr_warn:piss_them_off)%
+on_info4	= {=script(xr_warn:aim_weapon)} %=script(xr_warn:piss_them_off)%
+on_info5	= {!is_squad_commander} nil, {=actor_has_weapon} %=play_sound(meet_hide_weapon)%, %=play_sound(meet_use_no_default)%
+

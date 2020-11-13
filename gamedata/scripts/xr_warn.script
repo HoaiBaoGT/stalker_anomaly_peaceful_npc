@@ -1,0 +1,164 @@
+
+local ltx_name = [[scripts\warning.ltx]]
+local DISTANCE = {
+	["fire"] = 25,
+	["warn"] = 400,
+	["stop"] = 900,
+}
+
+function is_pissed_off(actor,npc)
+	if (npc and load_var(npc,"xr_warn")) then
+		return true
+	end
+	return false
+end
+
+function piss_them_off(actor,npc)
+	printf("GhenTuong: piss_them_off")
+	local squad = get_object_squad(npc)
+	if (squad) then
+		for k in squad:squad_members() do
+			local member = db.storage[k.id] and db.storage[k.id].object or level.object_by_id(k.id)
+			if (member and member:alive()) then
+				save_var(member,"xr_warn",true)
+			end
+		end
+	end
+end
+
+function check_distance(actor,npc,p)
+	local d = npc and db.actor and db.actor:position():distance_to_sqr(npc:position())
+	local i = p and p[1]
+	return d and i and DISTANCE[i] and (d < DISTANCE[i])
+end
+
+function aim_weapon(actor,npc,p)
+	printf("GhenTuong: aim_weapon")
+	if (axr_main.weapon_is_zoomed) then
+		return true
+	end
+	return false
+end
+
+function reset_scheme_all_member(actor,npc)
+	printf("GhenTuong: reset_scheme_all_member")
+	if not (npc) then
+		return
+	end
+	--reset when getting pissed off already
+	if (load_var(npc,"xr_warn")) then
+		xr_logic.restore_scheme_and_logic(npc)
+		return
+	end
+	local squad = get_object_squad(npc)
+	if (squad) then
+		--return if there is one member being inside stop range
+		for k in squad:squad_members() do
+			local member = db.storage[k.id] and db.storage[k.id].object or level.object_by_id(k.id)
+			if (member and member:alive()) then
+				if (check_distance(0,member,{"stop"})) then
+					return
+				end
+			end
+		end
+		--reset scheme for everyone
+		for k in squad:squad_members() do
+			local member = db.storage[k.id] and db.storage[k.id].object or level.object_by_id(k.id)
+			if (member and member:alive()) then
+				xr_logic.restore_scheme_and_logic(member)
+			end
+		end
+	end
+end
+
+function set_scheme(npc)
+	local st = db.storage[npc:id()]
+	if (st) then
+		--[[I don't know. Ask tdef. /gamedata/scripts/xr_bribe.script
+		if (st.ini_filename == '<customdata>') then
+			npc:inactualize_patrol_path()
+			local sim = alife()
+			local se_npc = sim:object(npc:id())
+			local unreg_id = se_npc and se_npc.m_smart_terrain_id
+			if (unreg_id and unreg_id ~= 65535) then
+				local unreg = sim:object(unreg_id)
+				if (unreg) then
+					unreg:unregister_npc(se_npc)
+				end
+			end
+			
+			xr_logic.configure_schemes(npc,ltx,ltx_name,modules.stype_stalker,"logic","")
+			local section = xr_logic.determine_section_to_activate(npc,ltx,"logic",db.actor)
+			xr_logic.activate_by_section(npc,ltx,section,"",false)
+			printf("GhenTuong: %s %s",npc:name(),section)
+		end
+		--]]
+		---[[GhenTuong
+		if (st.ini_filename ~= ltx_name) then
+			npc:inactualize_patrol_path()
+			local sim = alife()
+			local se_npc = sim:object(npc:id())
+			local unreg_id = se_npc and se_npc.m_smart_terrain_id
+			if (unreg_id and unreg_id ~= 65535) then
+				local unreg = sim:object(unreg_id)
+				if (unreg) then
+					unreg:unregister_npc(se_npc)
+				end
+			end
+			
+			local ltx = ini_file(ltx_name)
+			xr_logic.configure_schemes(npc,ltx,ltx_name,modules.stype_stalker,"logic","")
+			local section = xr_logic.determine_section_to_activate(npc,ltx,"logic",db.actor)
+			xr_logic.activate_by_section(npc,ltx,section,"",false)
+		end
+		printf("GhenTuong: %s %s %s",npc:name(),st.ini_filename,section)
+		--]]
+	end
+end
+
+function CB_npc_on_enemy_eval(npc,enemy,flags)
+	--Must be actor
+	if (enemy:id() ~= AC_ID) then
+		return
+	end
+	--is enemy
+	if not (npc:relation(enemy) >= game_object.enemy) then
+		return
+	end
+	--Monolith fucks everyone
+	if (string.find(character_community(npc),"monolith")) then
+		return
+	end
+	--npc not story object
+	if (get_story_se_object(npc)) then
+		return
+	end
+	--npc must be in a squad
+	if (get_object_squad(npc) == nil) then
+		return
+	end
+	--npc has been pissed off
+	if (is_pissed_off(0,npc)) then
+		return
+	end	
+	if (check_distance(0,npc,{"warn"})) then
+		local squad = get_object_squad(npc)
+		if (squad) then
+			for k in squad:squad_members() do
+				local member = db.storage[k.id] and db.storage[k.id].object or level.object_by_id(k.id)
+				if (member and member:alive()) then
+					set_scheme(member)
+				end
+			end
+		end
+	end
+	flags.override = true
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_enemy_eval",CB_npc_on_enemy_eval)
+	--RegisterScriptCallback("save_state",save_state)
+	--RegisterScriptCallback("load_state",load_state)
+	--RegisterScriptCallback("on_game_load",on_game_load)
+	--RegisterScriptCallback("npc_on_update",CB_npc_on_update)
+end
