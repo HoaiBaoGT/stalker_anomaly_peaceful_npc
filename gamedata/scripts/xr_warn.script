@@ -14,7 +14,6 @@ function is_pissed_off(actor,npc)
 end
 
 function piss_them_off(actor,npc)
-	printf("GhenTuong: piss_them_off")
 	local squad = get_object_squad(npc)
 	if (squad) then
 		for k in squad:squad_members() do
@@ -33,7 +32,6 @@ function check_distance(actor,npc,p)
 end
 
 function aim_weapon(actor,npc,p)
-	printf("GhenTuong: aim_weapon")
 	if (axr_main.weapon_is_zoomed) then
 		return true
 	end
@@ -41,13 +39,13 @@ function aim_weapon(actor,npc,p)
 end
 
 function reset_scheme_all_member(actor,npc)
-	printf("GhenTuong: reset_scheme_all_member")
 	if not (npc) then
 		return
 	end
 	--reset when getting pissed off already
-	if (load_var(npc,"xr_warn")) then
+	if (is_pissed_off(0,npc)) then
 		xr_logic.restore_scheme_and_logic(npc)
+		printf("GhenTuong: reset_scheme_all_member reset when getting pissed off already")
 		return
 	end
 	local squad = get_object_squad(npc)
@@ -66,34 +64,18 @@ function reset_scheme_all_member(actor,npc)
 			local member = db.storage[k.id] and db.storage[k.id].object or level.object_by_id(k.id)
 			if (member and member:alive()) then
 				xr_logic.restore_scheme_and_logic(member)
+				printf("GhenTuong: reset_scheme_all_member reset scheme for everyone")
 			end
 		end
 	end
 end
 
 function set_scheme(npc)
+	if (is_pissed_off(0,npc)) then
+		return --just in case
+	end
 	local st = db.storage[npc:id()]
 	if (st) then
-		--[[I don't know. Ask tdef. /gamedata/scripts/xr_bribe.script
-		if (st.ini_filename == '<customdata>') then
-			npc:inactualize_patrol_path()
-			local sim = alife()
-			local se_npc = sim:object(npc:id())
-			local unreg_id = se_npc and se_npc.m_smart_terrain_id
-			if (unreg_id and unreg_id ~= 65535) then
-				local unreg = sim:object(unreg_id)
-				if (unreg) then
-					unreg:unregister_npc(se_npc)
-				end
-			end
-			
-			xr_logic.configure_schemes(npc,ltx,ltx_name,modules.stype_stalker,"logic","")
-			local section = xr_logic.determine_section_to_activate(npc,ltx,"logic",db.actor)
-			xr_logic.activate_by_section(npc,ltx,section,"",false)
-			printf("GhenTuong: %s %s",npc:name(),section)
-		end
-		--]]
-		---[[GhenTuong
 		if (st.ini_filename ~= ltx_name) then
 			npc:inactualize_patrol_path()
 			local sim = alife()
@@ -111,8 +93,6 @@ function set_scheme(npc)
 			local section = xr_logic.determine_section_to_activate(npc,ltx,"logic",db.actor)
 			xr_logic.activate_by_section(npc,ltx,section,"",false)
 		end
-		printf("GhenTuong: %s %s %s",npc:name(),st.ini_filename,section)
-		--]]
 	end
 end
 
